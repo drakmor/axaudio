@@ -38,9 +38,6 @@ CMD="rtpdump -F payload"
 
 BROADCAST="0x$(hex $[0x$(hex ${ADDRESS//./ })+$CHANNEL])/5004"
 
-#Вывод настроек
-echo "Axia Livewire :: IP: $ADDRESS, CHANNEL: $CHANNEL"
-
 #Выполнение команды
 $CMD $BROADCAST
 
