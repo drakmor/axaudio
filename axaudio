@@ -1,0 +1,46 @@
+#!/bin/bash
+
+##
+##Получение аудиопотока в сети Axia Livewire
+##
+##Пример обработки полученных данных при помощи ffmpeg:
+##
+## | ffmpeg -ac 2 -ar 48000 -f s24be -i pipe:0
+##
+
+#Сценарий принимает адрес Axia Livewire в формате IP/Channel,
+#при этом IP-адрес может отсутствовать
+: ${1:?"USAGE: $0 <IP/Channel>"}
+
+#Прекращение работы, если нет последующего конвеера,
+#т.к. выводить дамп аудиопотока в stdout не имеет смысла.
+if [ -t 1 ]; then
+	echo "A pipe (f.e. to ffmpeg) isn't exists. Terminated."
+	exit 1
+fi
+
+#Перевод чисел в 16-ричную систему счисления
+hex() {
+	printf '%02X' "$@"
+}
+
+#IP-адрес Axia Livewire.
+IP="$(echo $1 | grep -o '.*\/' | tr '/' ' ')"
+
+#По умолчанию используется базовый адрес 239.192.0.0
+ADDRESS="${IP:-239.192.0.0}"
+
+#Канал
+CHANNEL="${1/*\/}"
+
+#Команда получения сигнала в сети Axia Livewire
+CMD="rtpdump -F payload"
+
+BROADCAST="0x$(hex $[0x$(hex ${ADDRESS//./ })+$CHANNEL])/5004"
+
+#Вывод настроек
+echo "Axia Livewire :: IP: $ADDRESS, CHANNEL: $CHANNEL"
+
+#Выполнение команды
+$CMD $BROADCAST
+
