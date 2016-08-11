@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ##
-##Получение аудиопотока в сети Axia Livewire
+##Получение информации и аудиопотока в сети Axia Livewire
 ##
 ##Пример обработки полученных данных при помощи ffmpeg:
 ##
@@ -10,12 +10,8 @@
 
 #Сценарий принимает адрес Axia Livewire в формате IP/Channel,
 #при этом IP-адрес может отсутствовать
-: ${1:?"USAGE: $0 <IP/Channel>"}
-
-#Прекращение работы, если нет последующего конвеера,
-#т.к. выводить дамп аудиопотока в stdout не имеет смысла.
-if [ -t 1 ]; then
-	echo "A pipe (f.e. to ffmpeg) isn't exists. Terminated."
+if [ $# -ne 2 ]; then
+	echo "USAGE: $0 [--info|--dump] <IP/Channel>"
 	exit 1
 fi
 
@@ -24,20 +20,42 @@ hex() {
 	printf '%02X' "$@"
 }
 
+#Программа
+PROGRAMME="$2"
+
 #IP-адрес Axia Livewire.
-IP="$(echo $1 | grep -o '.*\/' | tr '/' ' ')"
+IP="$(echo $PROGRAMME | grep -o '.*\/' | tr '/' ' ')"
 
 #По умолчанию используется базовый адрес 239.192.0.0
 ADDRESS="${IP:-239.192.0.0}"
 
 #Канал
-CHANNEL="${1/*\/}"
+CHANNEL="${PROGRAMME/*\/}"
 
 #Команда получения сигнала в сети Axia Livewire
 CMD="rtpdump -F payload"
 
 BROADCAST="0x$(hex $[0x$(hex ${ADDRESS//./ })+$CHANNEL])/5004"
+HEXADDR="$(hex $[0x$(hex ${ADDRESS//./ })+$CHANNEL])"
 
-#Выполнение команды
-$CMD $BROADCAST
+IPADDR=$(printf "%d." $(
+	echo $HEXADDR | sed 's/../0x& /g' | tr ' ' '\n'
+) | sed 's/\.$/\n/')
+
+#################
+
+if [ "$1" == "--info" ]; then
+	#Информация об источнике
+	echo "Axia Livewire :: IP: $IPADDR, SOURCE: $CHANNEL, BROADCAST: $BROADCAST"
+else
+	#Прекращение работы, если нет последующего конвеера,
+	#т.к. выводить дамп аудиопотока в stdout не имеет смысла.
+	if [ -t 1 ]; then
+		echo "A pipe (f.e. to ffmpeg) isn't exists. Terminated."
+		exit 1
+	else
+		#Дамп
+		$CMD $BROADCAST
+	fi
+fi
 
